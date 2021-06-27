@@ -1,0 +1,58 @@
+#!/bin/bash
+
+DEBUG=1
+
+error()
+{
+    echo "$*" 1>&2
+}
+
+verbose()
+{
+    if [ $DEBUG -ne 0 ]
+    then
+        echo "$*" 1>&2
+    fi
+}
+
+verbosen()
+{
+    if [ $DEBUG -ne 0 ]
+    then
+        echo -n "$*" 1>&2
+    fi
+}
+
+
+verbosen "Check compliance-tool: "
+compliance-tool --version  >/dev/null 2>&1
+if [ $? -ne 0 ]
+then
+    error "Compliance tool could not be found."
+    error " - install https://github.com/vinland-technology/compliance-tool-collection"
+    error " - update your PATH variable accordingly"
+    exit 1
+fi
+verbose " OK"
+
+verbosen "Setting up command: "
+MOUNT_DIR=/compliance-tools
+MOUNT_TMP_DIR=/tmp/compliance-tools
+
+DIR_TO_SCAN=$1
+DOCKER_MOUNT_ARGS="-v $(pwd):${MOUNT_DIR} -v ${MOUNT_TMP_DIR}:${MOUNT_TMP_DIR}"
+DOCKER_IMAGE=sandklef/compliance-tools
+DOCKER_TAG=0.3
+DOCKER_ARGS=" ${DOCKER_IMAGE}:${DOCKER_TAG}"
+SC_REPORT=${DIR_TO_SCAN}-scan.json
+PARALLEL_ARGS=" -n $(cat /proc/cpuinfo | grep processor | wc -l) "
+verbose " OK"
+
+COMMAND="docker run --rm -i -t ${DOCKER_MOUNT_ARGS} ${DOCKER_ARGS} scancode -clipe --license-text --license-text-diagnostics --classify --license-clarity-score --summary --summary-key-files --summary-with-details ${PARALLEL_ARGS} ${EXTRA_ARGS} --json ${SC_REPORT} ${DIR_TO_SCAN} --ignore meta.md --ignore *~"
+verbose "Command: $COMMAND"
+
+
+$COMMAND
+
+    
+
